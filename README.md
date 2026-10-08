@@ -1,116 +1,157 @@
 # MIRA
-Motion Interface for Real-Time Access
+### Motion Interface for Real-Time Access
 
-MIRA is a native macOS prototype that turns hand gestures into
-configurable computer controls. It uses Apple's Vision framework
-to recognize hand poses from the camera.
+MIRA is a native macOS prototype that uses camera-based hand tracking
+to control everyday tasks through configurable gestures.
 
-## Features
+## For judges
+
+- Source code: this repository.
+- Supported platform: macOS 14 or later.
+- Windows/Linux: not supported by the current implementation.
+- No MIRA account or paid Apple Developer membership is required
+  for the default local build.
+- Review the demonstration video if you do not have a compatible Mac.
+- This is a development prototype, not a notarized public installer.
+
+## What it does
 
 - Configurable gesture-to-action bindings
-- Hand setup using captured pose measurements
-- Open/close controls for supported applications and Chrome websites
+- Hand-setup measurements
+- Supported application and Chrome website open/close controls
 - Spotify playback controls
 - Screenshot and volume controls
 - Window minimize/maximize requests
-- Cursor Control: open palm moves; fist clicks
-- Separate Cursor Control and Actions modes
+- Cursor Control: open palm moves, fist clicks once
 
-Features depend on recognition quality, permissions, and the
-target application's support.
+Operation depends on tracking quality, permissions, and target-app support.
 
 ## Requirements
 
-- macOS 14 or later
-- A Mac with a camera
-- Swift tools supporting a Swift 6 package manifest
-- Google Chrome for website/tab controls
-- Spotify's desktop app for Spotify controls
+- macOS 14 or later and a camera
+- Swift tools compatible with a Swift 6 package manifest
+- Git
+- Google Chrome for website/tab actions
+- Spotify desktop app for Spotify actions
 
-## Build and run
+## Install and launch
 
-From the repository folder:
+### 1. Install the tools if needed
+
+Open Terminal and run:
+
+```bash
+xcode-select --install
+```
+
+Follow the system installer. If the tools are already installed,
+you do not need to reinstall them.
+
+Check the Swift version:
+
+```bash
+swift --version
+```
+
+This package requires tools supporting a Swift 6 manifest.
+If your tools are older, update Xcode or the Command Line Tools.
+
+### 2. Download and build MIRA
+
+```bash
+git clone [https://github.com/navset500-collab/MIRA-.git](https://github.com/navset500-collab/MIRA-.git)
+cd MIRA-
+zsh build.sh --run
+```
+
+The script builds and launches `build/MIRA.app`.
+
+The default build uses ad-hoc signing, not a personal development
+certificate. It does not request access to a developer signing key.
+
+If your Terminal already has MIRA_SIGN_IDENTITY set and you want
+the default certificate-free build, run:
 
 ```bash
 MIRA_SIGN_IDENTITY=- zsh build.sh --run
 ```
 
-This creates and launches `build/MIRA.app`.
+### 3. Launch it again later
 
-The command above uses local ad-hoc signing. For an installed
-development signing identity, provide its name or fingerprint:
+Double-click `build/MIRA.app` in Finder, or run from the repository folder:
 
 ```bash
-MIRA_SIGN_IDENTITY="YOUR INSTALLED SIGNING IDENTITY" zsh build.sh --run
+open build/MIRA.app
 ```
 
-Launch the app bundle, not the bare executable. Development builds
-are not notarized public installers.
+You only need to rebuild after changing the source.
 
-## First run and permissions
+## Permissions
 
-1. Approve Camera access and complete hand setup.
-2. Assign your preferred controls in the dashboard.
-3. Enable Actions to run assigned gestures, or enable Cursor Control
-   for mouse movement and clicking. Only one mode runs at a time.
+Approve only permissions required by the features you use.
 
-Approve only the permissions needed for your selected features:
-
-| Permission | Used for |
+| Permission | Purpose |
 | --- | --- |
 | Camera | Hand tracking |
 | Accessibility | Cursor input and window controls |
 | Screen Recording / Screen & System Audio Recording | Screenshots |
-| Automation: Google Chrome | Website and tab controls |
+| Automation: Google Chrome | Website/tab controls |
 | Automation: Spotify or Music | Playback controls |
 
-Find these under System Settings > Privacy & Security.
-macOS may request system authentication when changing permissions.
-MIRA itself has no account or password requirement.
+Find these in System Settings > Privacy & Security.
+After changing permissions, completely quit and reopen the same app.
 
-After changing permissions, completely quit and reopen the same
-MIRA app. If permission appears enabled but the app reports it
-unavailable, confirm the entry belongs to the current build.
-Rebuilding or changing signing can require reauthorization.
+MIRA does not ask for your Apple Account password or have its own login.
+macOS may require system authentication to change protected settings.
+The app does not bypass those protections.
 
-## Using Cursor Control
+Ad-hoc signing does not guarantee permissions persist across rebuilds.
+If MIRA reports unavailable access despite an enabled entry, check
+that the entry belongs to the current build.
 
-- Start the camera and enable Cursor Control.
-- Show an open palm to move the cursor.
-- Close your hand into a fist briefly to click once.
-- Show an open palm before the next click.
-- Turn Cursor Control off before enabling assigned Actions.
+## Cursor Control
 
-Cursor Control currently targets the primary display and does not
-implement scrolling or dragging.
+Start the camera, then enable Cursor Control in the toolbar.
+
+- Open palm moves the cursor.
+- Fist clicks once at its last position.
+- Open your palm again before another click.
+- Holding a fist does not repeatedly click.
+- Cursor Control and assigned Actions are mutually exclusive.
+- Movement targets the primary display.
+- Scrolling and dragging are not implemented.
 
 ## Open/close behavior
 
-App toggles launch an application or request a normal quit.
-Unsaved-work prompts are not bypassed.
+Website actions use Google Chrome. They close the tracked tab or one
+matching site tab when tracking is unavailable; otherwise they open it.
 
-Website toggles use Chrome. They close their tracked tab, or one
-matching site tab when tracking is unavailable; otherwise they open
-the site. Tab tracking is session-local.
+Application close actions request a normal quit. They do not bypass
+unsaved-work dialogs. Relax your hand between repeated gestures.
 
-Relax or remove your hand between repeated action gestures.
+## Troubleshooting
 
-## Privacy
+- Accessibility blocked: approve the current MIRA build and relaunch.
+- Camera off: start it in the toolbar.
+- No landmarks: keep the whole hand visible with good lighting.
+- Pose unclear: show a clear open palm or fist.
+- Chrome command failed: check Automation permission.
+- Window resize rejected: some apps restrict external resizing.
 
-Hand recognition runs locally. The camera pipeline processes
-frames without saving camera video. Website actions intentionally
-open external services in Chrome; those services have their own
-privacy policies.
+Test the exact recording setup before making your demo. Another camera
+application adds a variable; use a separate phone for face footage if needed.
 
-## Limitations
+## Privacy and limitations
 
-MIRA is a prototype. Rule-based recognition can confuse similar
-poses or poor lighting. Calibration adjusts confidence using saved
-measurements; it does not train a new machine-learning model.
+Hand recognition runs locally. The camera pipeline does not save video.
+Website actions intentionally open external services.
 
-One hand is analyzed at a time. Bindings are shared between hands.
-Some apps do not support external window resizing, and sending a
-command does not guarantee the target app performs it.
+Recognition is rule-based. Setup measurements adjust confidence;
+they do not train a new neural network.
+
+This is a prototype, not a guaranteed mouse replacement or validated
+accessibility solution. Bindings are shared between hands, and one hand
+is analyzed at a time.
 
 ## Tests
 
@@ -118,7 +159,5 @@ command does not guarantee the target app performs it.
 swift test
 ```
 
-XCTest-based tests require a suitable Xcode toolchain. If XCTest
-cannot be found, select full Xcode under
+XCTest tests may require full Xcode selected under
 Xcode > Settings > Locations > Command Line Tools.
-
