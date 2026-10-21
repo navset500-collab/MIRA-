@@ -26,6 +26,9 @@ public enum HandGesture: String, CaseIterable, Identifiable, Codable, Sendable {
 }
 
 public enum MIRAAction: String, CaseIterable, Identifiable, Sendable {
+    // mira.stockMarket.separateVolume.v1
+    case stockMarket
+
     case screenshot
     case playPauseMusic
     case nextTrack
@@ -38,7 +41,7 @@ public enum MIRAAction: String, CaseIterable, Identifiable, Sendable {
     case openChatGPT
     case cursorControl
     case maximizeWindow
-    case openMessenger
+    case openInstagram
     case chromeTabToggle
     case openSpotify
     case spotifyPlayPause
@@ -54,23 +57,24 @@ public enum MIRAAction: String, CaseIterable, Identifiable, Sendable {
 
     public static var allCases: [MIRAAction] {
         [
+            .cursorControl,
+            .maximizeWindow,
+            .minimizeWindow,
             .screenshot,
-            .nextTrack,
-            .previousTrack,
-            .volumeControl,
+            .stockMarket,
             .openNotes,
             .openCalendar,
             .openGmail,
             .openYouTube,
             .openChatGPT,
-            .maximizeWindow,
-            .openMessenger,
+            .openInstagram,
             .chromeTabToggle,
             .openSpotify,
-            .spotifyPlayPause,
-            .minimizeWindow,
+            .playPauseMusic,
+            .volumeUp,
+            .volumeDown,
             .toggleActions,
-            .disabled
+            .disabled,
         ]
     }
 
@@ -78,25 +82,25 @@ public enum MIRAAction: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .screenshot: "Take Screenshot"
-        case .playPauseMusic: "Play / Pause Apple Music"
-        case .nextTrack: "Next Music Track"
-        case .previousTrack: "Previous Music Track"
-        case .volumeControl: "Volume Up / Down"
-        case .openNotes: "Open / Close Notes"
-        case .openCalendar: "Open / Close Calendar"
-        case .openGmail: "Open / Close Gmail"
-        case .openYouTube: "Open / Close YouTube"
-        case .openChatGPT: "Open / Close ChatGPT"
-        case .cursorControl: "Cursor Control"
-        case .maximizeWindow: "Maximize Window"
-        case .openMessenger: "Open / Close Messenger"
-        case .chromeTabToggle: "Open / Close Chrome Tab"
-        case .openSpotify: "Open / Close Spotify"
-        case .spotifyPlayPause: "Spotify Play / Pause"
-        case .minimizeWindow: "Minimize Window"
-        case .toggleActions: "Pause / Resume Actions"
-        default: "No Action"
+        case .cursorControl: return "Cursor Control On/Off"
+        case .maximizeWindow: return "Maximize / Restore Window"
+        case .minimizeWindow: return "Minimize Window"
+        case .screenshot: return "Take Screenshot"
+        case .stockMarket: return "Open/Close Stock Market in Chrome"
+        case .openNotes: return "Open/Close Notes"
+        case .openCalendar: return "Open/Close Calendar"
+        case .openGmail: return "Open/Close Gmail"
+        case .openYouTube: return "Open/Close YouTube"
+        case .openChatGPT: return "Open/Close ChatGPT"
+        case .openInstagram: return "Open/Close Instagram"
+        case .chromeTabToggle: return "Open/Close Chrome Tab"
+        case .openSpotify: return "Open/Close Spotify"
+        case .playPauseMusic: return "Play/Pause Spotify"
+        case .volumeUp: return "Volume Up"
+        case .volumeDown: return "Volume Down"
+        case .toggleActions: return "Actions On/Off"
+        case .disabled: return "Disabled"
+        default: return rawValue
         }
     }
 }
@@ -443,7 +447,7 @@ public struct TemporalStabilizer: Sendable {
         }
 
         guard candidateFrames >= minimumFrames,
-              time - (candidateStart ?? time) >= minimumDuration
+              time - (candidateStart ?? time) + 1e-9 >= minimumDuration
         else { return nil }
 
         isArmed = false

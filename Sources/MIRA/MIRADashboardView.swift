@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import MIRACore
 import SwiftUI
 
@@ -8,7 +9,12 @@ struct MIRADashboardView: View {
     @StateObject private var camera = HandCameraModel()
     @StateObject private var pointer = PointerController()
     @State private var actionStatus = "Ready when you are"
+    @State private var showingPersonalization = false
+    @State private var showingCursorCalibration = false
     @AppStorage("mira.actionsEnabled") private var actionsEnabled = false
+    private var feedbackEnabled: Bool {
+        actionsEnabled || pointer.isEnabled
+    }
     @AppStorage("binding.fist") private var fistAction = MIRAAction.screenshot.rawValue
     @AppStorage("binding.openPalm") private var palmAction = MIRAAction.playPauseMusic.rawValue
     @AppStorage("binding.thumbsUp") private var thumbsAction = MIRAAction.openNotes.rawValue
@@ -34,34 +40,149 @@ struct MIRADashboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            HStack(alignment: .top, spacing: 28) {
-                cameraPanel.frame(maxWidth: .infinity)
-                ScrollView(.vertical) {
-                    controlsColumn
+            if showingPersonalization {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Make MIRA yours.")
+                                .font(.system(size: 30, weight: .regular, design: .serif))
+                                .foregroundStyle(ink)
+                            Text("Choose your action bindings here. Cursor Control has its own fixed gestures.")
+                                .font(.system(size: 13))
+                                .foregroundStyle(muted)
+                        }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("HOVER INDICATION")
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(muted)
+                            Text("Show a small floating notice when MIRA recognizes a gesture or completes an action, even while another app is in front.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(ink)
+                            Text("Automatic: on while Actions or Cursor Control is on.")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(accent)
+                            Text("Notices last three seconds. Turn both modes off to hide them.")
+                                .font(.system(size: 10))
+                                .foregroundStyle(muted)
+                        }
+                        .padding(20)
+                        .background(surface, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(border, lineWidth: 1)
+                        )
+
+                        controlsColumn
+                    }
+                    .frame(maxWidth: 700, alignment: .leading)
+                    .padding(30)
+                    .frame(maxWidth: .infinity)
                 }
-                .scrollIndicators(.hidden)
-                .frame(width: 430)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(pointer.isEnabled ? "CURSOR CONTROL" : "CAMERA WORKSPACE")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(accent)
+
+                            Text(pointer.isEnabled
+                                ? "Open Palm → move · Fist → click · Index + Middle → scroll"
+                                : "Enable Actions for your shortcuts, or Cursor Control for movement and clicking.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(ink)
+                        }
+                        Spacer()
+                        Text(pointer.isEnabled ? "ASSIGNED ACTIONS PAUSED" : "PERSONALIZE IN SETTINGS")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundStyle(muted)
+                    }
+
+                    cameraPanel
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    HStack {
+                        Text(pointer.isEnabled ? pointer.status : actionStatus)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(ink)
+                            .lineLimit(2)
+                        Spacer()
+                        if pointer.isEnabled {
+                            Text("Primary display · Open hand again before another click")
+                                .font(.system(size: 10))
+                                .foregroundStyle(muted)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 18)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 30)
-            .padding(.vertical, 23)
             footer
         }
         .background(paper.ignoresSafeArea())
         .preferredColorScheme(.light)
         .onAppear {
+            UserDefaults.standard.set(
+                pointer.isEnabled,
+                forKey: "mira.cursor.feedbackActive"
+            )
+            UserDefaults.standard.set(
+                feedbackEnabled,
+                forKey: "mira.feedbackEnabled"
+            )
+            FeedbackCenter.dismissWhenModesOff()
             TargetAppTracker.shared.start()
             migrateActionBindings()
         }
-        .onDisappear { pointer.stop() }
         .onChange(of: actionsEnabled) { _, enabled in
             if enabled { pointer.stop() }
+            UserDefaults.standard.set(
+                feedbackEnabled,
+                forKey: "mira.feedbackEnabled"
+            )
+            if !feedbackEnabled {
+                FeedbackCenter.dismissWhenModesOff()
+            }
         }
         .onChange(of: pointer.isEnabled) { _, enabled in
             if enabled { actionsEnabled = false }
+            UserDefaults.standard.set(
+                feedbackEnabled,
+                forKey: "mira.feedbackEnabled"
+            )
+            if !feedbackEnabled {
+                FeedbackCenter.dismissWhenModesOff()
+            }
         }
-        .onChange(of: camera.triggerID) { _, _ in runBoundAction() }
-        .onChange(of: camera.landmarks) { _, points in
-            pointer.update(points, gesture: camera.prediction?.gesture)
+        // mira.spotifyAndRecognition.v1
+        .onChange(of: camera.prediction?.gesture) { _, gesture in
+            guard feedbackEnabled, let gesture else { return }
+            FeedbackCenter.show(
+                "MIRA sees: \(gesture.rawValue)",
+                kind: .success
+            )
+        }
+        .onChange(of: camera.triggerID) { _, _ in
+            runBoundAction()
+        }
+        .onChange(of: pointer.status) { _, status in
+            guard feedbackEnabled else { return }
+
+            if status.hasPrefix("Scrolling") {
+                FeedbackCenter.show(
+                    "MIRA: Index + Middle → Scroll mode",
+                    kind: .success
+                )
+            } else if status.hasPrefix("Click sent") {
+                FeedbackCenter.show(status, kind: .success)
+            } else if status.localizedCaseInsensitiveContains("paused") {
+                FeedbackCenter.show(status, kind: .warning)
+            }
+        }
+        .onAppear {
+            pointer.connect(to: camera)
         }
         .onChange(of: camera.isRunning) { _, running in
             if !running { pointer.stop() }
@@ -95,6 +216,14 @@ struct MIRADashboardView: View {
             }
             .controlSize(.small)
 
+            Button(showingPersonalization ? "Camera" : "Personalize") {
+                pointer.stop()
+                actionsEnabled = false
+                showingPersonalization.toggle()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
             Toggle("Cursor Control", isOn: Binding(
                 get: { pointer.isEnabled },
                 set: { enabled in
@@ -108,7 +237,7 @@ struct MIRADashboardView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .tint(accent)
-                .disabled(!camera.isRunning)
+                .disabled(!camera.isRunning || showingPersonalization)
                 .help("Open palm moves the cursor. Fist clicks once. Assigned actions are disabled in this mode.")
 
             Toggle("Actions", isOn: Binding(
@@ -148,66 +277,111 @@ struct MIRADashboardView: View {
     }
 
     private var cameraPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("LIVE CAMERA")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(muted)
-                Spacer()
-                Text(camera.cameraStatus.uppercased())
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(muted)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
+        GeometryReader { geometry in
             ZStack {
                 CameraPreview(session: camera.session)
-                HandSkeleton(landmarks: camera.landmarks, imageSize: camera.imageSize)
-                if camera.landmarks.isEmpty {
-                    VStack(spacing: 8) {
-                        Text("Raise one hand into view")
-                            .font(.system(size: 14, weight: .medium, design: .serif))
-                        Text(camera.cameraStatus == "Camera off" ? "Start the camera to begin" : camera.cameraStatus)
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        if camera.cameraStatus.contains("Settings") || camera.cameraStatus.contains("denied") {
-                            Button("Open Camera Settings") { camera.openCameraSettings() }
-                                .buttonStyle(.link)
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height
+                    )
+
+                HandSkeleton(
+                    landmarks: camera.landmarks,
+                    imageSize: camera.imageSize
+                )
+                .allowsHitTesting(false)
+
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(camera.isRunning ? accent : muted)
+                            .frame(width: 8, height: 8)
+                        Text(camera.cameraStatus.uppercased())
+                            .font(.system(
+                                size: 11,
+                                weight: .semibold,
+                                design: .monospaced
+                            ))
+                        Spacer()
+                        Text(
+                            "\(camera.framesPerSecond) FPS"
+                            + " · \(camera.landmarks.count) POINTS"
+                            + " · ACCESS: \(AXIsProcessTrusted() ? "YES" : "NO")"
+                        )
+                        .font(.system(
+                            size: 10,
+                            weight: .medium,
+                            design: .monospaced
+                        ))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(.black.opacity(0.65))
+
+                    Spacer()
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(pointer.isEnabled
+                            ? "OPEN PALM → MOVE   ·   FIST → CLICK"
+                            : "SHOW YOUR HAND CLEARLY IN THE CAMERA")
+                            .font(.system(
+                                size: 12,
+                                weight: .semibold,
+                                design: .monospaced
+                            ))
+
+                        Text(pointer.status)
+                            .font(.system(size: 12))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(.black.opacity(0.65))
+                }
+
+                if !camera.isRunning || camera.landmarks.isEmpty {
+                    VStack(spacing: 10) {
+                        Text(camera.isRunning
+                            ? "Keep your whole hand in view"
+                            : "Start the camera")
+                            .font(.system(
+                                size: 22,
+                                weight: .medium,
+                                design: .serif
+                            ))
+
+                        Text(camera.cameraStatus)
+                            .font(.system(size: 12))
+
+                        if camera.cameraStatus.contains("Settings")
+                            || camera.cameraStatus.contains("denied") {
+                            Button("Open Camera Settings") {
+                                camera.openCameraSettings()
+                            }
+                            .buttonStyle(.borderedProminent)
                         }
                     }
                     .foregroundStyle(.white)
-                    .padding(15)
-                    .background(ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 7))
+                    .padding(22)
+                    .background(
+                        .black.opacity(0.65),
+                        in: RoundedRectangle(cornerRadius: 12)
+                    )
                 }
-                VStack {
-                    HStack {
-                        Text("HAND TRACKING")
-                        Spacer()
-                        Text("LIVE HAND TRACKING")
-                    }
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                    .tracking(0.4)
-                    .foregroundStyle(.white.opacity(0.92))
-                    .padding(12)
-                    Spacer()
-                }
-                .allowsHitTesting(false)
             }
-            .frame(height: 410)
-            .clipShape(RoundedRectangle(cornerRadius: 5))
-            HStack(spacing: 0) {
-                metric("GESTURE SCORE", value: camera.prediction.map { "\(Int($0.confidence * 100))%" } ?? "--")
-                Rectangle().fill(border).frame(width: 1, height: 30)
-                metric("MEASURED RATE", value: camera.isRunning ? "\(camera.framesPerSecond) FPS" : "--")
-                Rectangle().fill(border).frame(width: 1, height: 30)
-                metric("VIDEO SAVED", value: "NEVER")
-            }
-            .padding(.vertical, 12)
+            .frame(
+                width: geometry.size.width,
+                height: geometry.size.height
+            )
+            .background(Color.black)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(border, lineWidth: 1)
+            )
         }
-        .padding(10)
-        .background(surface, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(border, lineWidth: 1))
+        .frame(minHeight: 420)
     }
 
     private var controlsColumn: some View {
@@ -310,8 +484,32 @@ struct MIRADashboardView: View {
         for gesture in HandGesture.allCases {
             let value = binding(for: gesture)
             switch value.wrappedValue {
-            case "volumeUp", "volumeDown":
-                value.wrappedValue = MIRAAction.volumeControl.rawValue
+            case "previousTrack", "nextTrack", "spotifyPlayPause":
+                let replacement: MIRAAction
+                switch value.wrappedValue {
+                case "previousTrack":
+                    replacement = .cursorControl
+                case "nextTrack":
+                    replacement = .stockMarket
+                default:
+                    replacement = .playPauseMusic
+                }
+
+                let alreadyAssigned = HandGesture.allCases.contains {
+                    $0 != gesture &&
+                    binding(for: $0).wrappedValue == replacement.rawValue
+                }
+
+                value.wrappedValue = alreadyAssigned
+                    ? MIRAAction.disabled.rawValue
+                    : replacement.rawValue
+
+            case "openMessenger":
+                value.wrappedValue = MIRAAction.openInstagram.rawValue
+            case "volumeControl":
+                value.wrappedValue = MIRAAction.volumeUp.rawValue
+            case "openGoogleDocs":
+                value.wrappedValue = MIRAAction.stockMarket.rawValue
             case "openSafari", "newBrowserTab", "closeBrowserTab":
                 value.wrappedValue = MIRAAction.chromeTabToggle.rawValue
             default:
@@ -340,6 +538,45 @@ struct MIRADashboardView: View {
         }
     }
 
+    private func validatedBinding(for gesture: HandGesture) -> Binding<String> {
+        Binding<String>(
+            get: { binding(for: gesture).wrappedValue },
+            set: { newValue in
+                let disabled = MIRAAction.disabled.rawValue
+
+                if newValue == MIRAAction.cursorControl.rawValue,
+                   gesture == .openPalm || gesture == .fist || gesture == .peace {
+                    actionStatus = "Choose another gesture for Cursor Control: Open Palm, Fist, and Peace are used inside cursor mode."
+                    FeedbackCenter.show(actionStatus, kind: .warning)
+                    return
+                }
+
+                guard newValue != disabled else {
+                    binding(for: gesture).wrappedValue = newValue
+                    actionStatus = "\(gesture.rawValue) is disabled"
+                    return
+                }
+
+                if let conflict = HandGesture.allCases.first(where: {
+                    $0 != gesture && binding(for: $0).wrappedValue == newValue
+                }) {
+                    let title = MIRAAction(rawValue: newValue)?.title ?? newValue
+                    actionStatus = "\(conflict.rawValue) already uses \(title). Choose a different action."
+                    FeedbackCenter.show(actionStatus, kind: .warning)
+                    return
+                }
+
+                binding(for: gesture).wrappedValue = newValue
+                let title = MIRAAction(rawValue: newValue)?.title ?? newValue
+                actionStatus = "\(gesture.rawValue) assigned to \(title)"
+                FeedbackCenter.show(
+                    "MIRA: \(gesture.rawValue) → \(title)",
+                    kind: .success
+                )
+            }
+        )
+    }
+
     private func bindingCell(_ gesture: HandGesture) -> some View {
         HStack(spacing: 4) {
             Text(symbol(for: gesture))
@@ -350,7 +587,7 @@ struct MIRADashboardView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .frame(width: 100, alignment: .leading)
-            Picker(gesture.rawValue, selection: binding(for: gesture)) {
+            Picker(gesture.rawValue, selection: validatedBinding(for: gesture)) {
                 ForEach(MIRAAction.allCases) { action in
                     Text(action.title).tag(action.rawValue)
                 }
@@ -390,46 +627,51 @@ struct MIRADashboardView: View {
         }
     }
 
+    // mira.assignableCursor.twoFinger.v2
     private func runBoundAction() {
-        guard !pointer.isEnabled else { return }
         guard let gesture = camera.lastTriggeredGesture,
-              let action = MIRAAction(rawValue: binding(for: gesture).wrappedValue)
-        else { return }
+              let action = MIRAAction(
+                rawValue: binding(for: gesture).wrappedValue
+              ) else { return }
 
-        if action == .cursorControl {
-            if pointer.isEnabled || actionsEnabled {
-                execute(action, prefix: "")
-            } else {
-                actionStatus = "Enable Actions to enter cursor mode"
+        // Cursor-mode gestures must not also trigger shortcuts.
+        // Keep the assigned toggle on a different gesture.
+        if pointer.isEnabled {
+            if gesture == .openPalm || gesture == .fist || gesture == .peace {
+                return
             }
-            return
-        }
-
-        if action == .toggleActions {
+            guard action == .cursorControl else { return }
             execute(action, prefix: "")
             return
         }
 
-        guard !pointer.isEnabled else { return }
+        // Mode switches remain reachable while ordinary actions are paused.
+        if action == .cursorControl || action == .toggleActions {
+            execute(action, prefix: "")
+            return
+        }
+
         guard actionsEnabled else {
             actionStatus = "\(gesture.rawValue) recognized · actions paused"
             return
         }
+
         execute(
             action,
             prefix: "",
-            volumeDirection: gesture == .thumbsDown || gesture == .pointDown ? -10 : 10
+            volumeDirection:
+                gesture == .thumbsDown || gesture == .pointDown ? -10 : 10
         )
     }
 
     private func testBoundAction(for gesture: HandGesture) {
-        guard !pointer.isEnabled else {
-            actionStatus = "Turn Cursor Control off before testing actions"
-            return
-        }
         guard let action = MIRAAction(
             rawValue: binding(for: gesture).wrappedValue
         ) else { return }
+        guard !pointer.isEnabled || action == .cursorControl else {
+            actionStatus = "Turn Cursor Control off before testing other actions"
+            return
+        }
         execute(
             action,
             prefix: "Test: ",
@@ -443,7 +685,15 @@ struct MIRADashboardView: View {
         volumeDirection: Int = 10
     ) {
         if action == .cursorControl {
-            actionStatus = "Use the Cursor Control switch in the toolbar"
+            let enabling = !pointer.isEnabled
+            pointer.setEnabled(enabling)
+            if enabling { actionsEnabled = false }
+            actionStatus = prefix + (enabling
+                ? "Cursor Control on"
+                : "Cursor Control off")
+            if feedbackEnabled {
+                FeedbackCenter.show(actionStatus, kind: .success)
+            }
             return
         }
         if action == .toggleActions {
@@ -453,7 +703,30 @@ struct MIRADashboardView: View {
             return
         }
         ActionExecutor.execute(action, volumeDirection: volumeDirection) {
-            result in actionStatus = prefix + result
+            result in
+            actionStatus = prefix + result
+            guard feedbackEnabled else { return }
+
+            let cleanResult = result
+                .replacingOccurrences(of: prefix, with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let failure = cleanResult.lowercased().contains("fail")
+                || cleanResult.lowercased().contains("denied")
+                || cleanResult.lowercased().contains("unavailable")
+                || cleanResult.lowercased().contains("could not")
+
+            let message: String
+            if cleanResult.isEmpty {
+                message = "MIRA understood: \(camera.lastTriggeredGesture?.rawValue ?? "gesture")"
+            } else {
+                message = "MIRA understood: \(camera.lastTriggeredGesture?.rawValue ?? "gesture") and \(cleanResult.prefix(1).lowercased())\(cleanResult.dropFirst())"
+            }
+
+            FeedbackCenter.show(
+                message,
+                kind: failure ? .warning : .success
+            )
         }
     }
 }

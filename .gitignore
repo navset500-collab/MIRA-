@@ -13,3 +13,11 @@ xcuserdata/
 DEMO_SCRIPT.md
 SUBMISSION.md
 SETUP_AND_DEMO.md
+
+# Local builds, private settings, and backups
+/.build/
+/build/
+/.swiftpm/
+/Backups/
+**/xcuserdata/
+!.env.example

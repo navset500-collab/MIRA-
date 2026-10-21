@@ -9,7 +9,7 @@ final class GestureRecognitionTests: XCTestCase {
         XCTAssertEqual(classifier.classify(features(extended: [.index, .middle, .ring, .little]))?.gesture, .openPalm)
         XCTAssertEqual(classifier.classify(features(extended: [.index, .middle]))?.gesture, .peace)
         XCTAssertEqual(classifier.classify(features(extended: [.index], indexLift: 0.3))?.gesture, .pointUp)
-        XCTAssertEqual(classifier.classify(features(extended: [], thumbExtension: 0.95))?.gesture, .thumbsUp)
+        XCTAssertEqual(classifier.classify(features(extended: [], thumbExtension: 0.95, thumbLift: 0.5))?.gesture, .thumbsUp)
         XCTAssertEqual(classifier.classify(features(extended: [], thumbExtension: 0.95, thumbLift: -0.5))?.gesture, .thumbsDown)
         XCTAssertEqual(classifier.classify(features(extended: [.index], indexLift: -0.3))?.gesture, .pointDown)
         XCTAssertEqual(classifier.classify(features(extended: [.index], indexSide: -0.3))?.gesture, .pointLeft)
@@ -23,7 +23,7 @@ final class GestureRecognitionTests: XCTestCase {
         let templates: [HandGesture: GestureFeatures] = [
             .fist: features(extended: []),
             .openPalm: features(extended: [.index, .middle, .ring, .little]),
-            .thumbsUp: features(extended: [], thumbExtension: 0.95),
+            .thumbsUp: features(extended: [], thumbExtension: 0.95, thumbLift: 0.5),
             .thumbsDown: features(extended: [], thumbExtension: 0.95, thumbLift: -0.5),
             .peace: features(extended: [.index, .middle]),
             .pointUp: features(extended: [.index], indexLift: 0.3),
@@ -68,6 +68,83 @@ final class GestureRecognitionTests: XCTestCase {
         XCTAssertNil(stabilizer.observe(.peace, at: 1.55))
         XCTAssertNil(stabilizer.observe(.peace, at: 1.6))
         XCTAssertEqual(stabilizer.observe(.peace, at: 1.65), .peace)
+    }
+
+    // mira.regression.directionAndTiming.v1
+    func testExtendedThumbNeedsDirectionForThumbsUpOrDown() {
+        let neutral = features(
+            extended: [],
+            thumbExtension: 0.95,
+            thumbLift: 0
+        )
+        XCTAssertNil(classifier.classify(neutral))
+
+        XCTAssertEqual(
+            classifier.classify(features(
+                extended: [],
+                thumbExtension: 0.95,
+                thumbLift: 0.5
+            ))?.gesture,
+            .thumbsUp
+        )
+
+        XCTAssertEqual(
+            classifier.classify(features(
+                extended: [],
+                thumbExtension: 0.95,
+                thumbLift: -0.5
+            ))?.gesture,
+            .thumbsDown
+        )
+    }
+
+    func testRecognizesThreeFingerPose() {
+        XCTAssertEqual(
+            classifier.classify(features(
+                extended: [.index, .middle, .ring]
+            ))?.gesture,
+            .three
+        )
+    }
+
+    func testHoldDurationBoundaryWithoutPrematureTrigger() {
+        var stabilizer = TemporalStabilizer()
+
+        XCTAssertNil(stabilizer.observe(.peace, at: 1.45))
+        XCTAssertNil(stabilizer.observe(.peace, at: 1.50))
+        XCTAssertNil(stabilizer.observe(.peace, at: 1.55))
+        XCTAssertNil(stabilizer.observe(.peace, at: 1.60))
+
+        // One microsecond short must still not trigger.
+        XCTAssertNil(stabilizer.observe(.peace, at: 1.649999))
+
+        // The intended 0.2-second boundary must trigger.
+        XCTAssertEqual(
+            stabilizer.observe(.peace, at: 1.65),
+            .peace
+        )
+
+        // A held pose must not immediately trigger again.
+        XCTAssertNil(stabilizer.observe(.peace, at: 1.70))
+    }
+
+    func testSubmissionActionMenuHasSeparateVolumeAndStockMarket() {
+        let actions = MIRAAction.allCases
+
+        XCTAssertEqual(actions.count, 18)
+        XCTAssertEqual(Set(actions.map { $0.rawValue }).count, 18)
+        XCTAssertTrue(actions.contains(.stockMarket))
+        XCTAssertTrue(actions.contains(.volumeUp))
+        XCTAssertTrue(actions.contains(.volumeDown))
+        XCTAssertTrue(actions.contains(.maximizeWindow))
+        XCTAssertTrue(actions.contains(.minimizeWindow))
+        XCTAssertTrue(actions.contains(.cursorControl))
+
+        XCTAssertFalse(actions.contains(.volumeControl))
+        XCTAssertFalse(actions.contains(.openGoogleDocs))
+        XCTAssertFalse(actions.contains(.nextTrack))
+        XCTAssertFalse(actions.contains(.previousTrack))
+        XCTAssertFalse(actions.contains(.spotifyPlayPause))
     }
 
     private func features(

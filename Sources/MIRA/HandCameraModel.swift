@@ -25,6 +25,7 @@ final class HandCameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutpu
     @Published private(set) var prediction: GesturePrediction?
     @Published private(set) var stabilityProgress = 0.0
     @Published private(set) var framesPerSecond = 0
+    @Published private(set) var cursorFrameNumber: UInt64 = 0
     @Published private(set) var calibrationTarget: HandGesture?
     @Published private(set) var calibrationProgress = 0.0
     @Published private(set) var calibrationMessage = "Show the requested gesture, then capture."
@@ -41,6 +42,7 @@ final class HandCameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutpu
     private let sessionQueue = DispatchQueue(label: "mira.camera.session")
     private let visionQueue = DispatchQueue(label: "mira.vision.frames", qos: .userInitiated)
     private let classifier = GestureClassifier()
+    private let mediaPipe = MediaPipeBridge()
     private let handPoseRequest: VNDetectHumanHandPoseRequest = {
         let request = VNDetectHumanHandPoseRequest()
         request.maximumHandCount = 1
@@ -219,6 +221,28 @@ final class HandCameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutpu
         session.commitConfiguration()
         session.startRunning()
         publishRunning()
+
+        if let python = URL(string: "file:///Users/navrajsinghsethi/Documents/GitHub/MIRA/Prototypes/mira_next/.venv/bin/python"),
+           let model = URL(string: "file:///Users/navrajsinghsethi/Documents/GitHub/MIRA/Prototypes/mira_next/hand_landmarker.task") {
+            mediaPipe.start(executable: python, model: model) { [weak self] landmarks in
+                self?.handleMediaPipeLandmarks(landmarks)
+            }
+        }
+    }
+
+    private func handleMediaPipeLandmarks(_ landmarks: [HandLandmark]) {
+        guard !landmarks.isEmpty else {
+            hasValidPoseFeatures = false
+            if isRunning { cameraStatus = "Searching for a hand" }
+            cursorFrameNumber &+= 1
+            return
+        }
+
+        self.landmarks = landmarks
+        hasValidPoseFeatures = landmarks.count >= 12
+        imageSize = CGSize(width: 1280, height: 720)
+        if isRunning { cameraStatus = "Hand tracked (MediaPipe)" }
+        cursorFrameNumber &+= 1
     }
 
     private func publishStatus(_ status: String) {
@@ -248,9 +272,21 @@ final class HandCameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutpu
         guard now - lastProcessedAt >= processingInterval else { return }
         lastProcessedAt = now
 
+        if mediaPipe.isReady {
+            mediaPipe.send(
+                pixelBuffer: pixelBuffer,
+                width: Int(frameSize.width),
+                height: Int(frameSize.height)
+            )
+            updateFPS()
+            return
+        }
+
         do {
             try VNImageRequestHandler(cvPixelBuffer: pixelBuffer).perform([handPoseRequest])
-            let results = (handPoseRequest.results ?? []).compactMap(makeHandResult)
+            let observations = handPoseRequest.results ?? []
+            let rawCursorLandmarks = observations.first.map(makeCursorLandmarks) ?? []
+            let results = observations.compactMap(makeHandResult)
             let result = results.max { $0.trackingConfidence < $1.trackingConfidence }
             let event = stabilizer.observe(result?.prediction?.gesture, at: now)
             let stableProgress = event == nil ? stabilizer.progress(at: now) : 1
@@ -259,7 +295,7 @@ final class HandCameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutpu
             guard now - lastUIUpdateAt >= uiUpdateInterval || event != nil else { return }
             lastUIUpdateAt = now
             DispatchQueue.main.async {
-                self.landmarks = result?.landmarks ?? []
+                self.landmarks = result?.landmarks ?? rawCursorLandmarks
                 self.hasValidPoseFeatures = (result?.features?.trackingConfidence ?? 0) >= 0.45
                 self.imageSize = frameSize
                 self.prediction = result?.prediction
@@ -271,6 +307,7 @@ final class HandCameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutpu
                 if self.isRunning {
                     self.cameraStatus = result == nil ? "Searching for a hand" : "Hand tracked"
                 }
+                self.cursorFrameNumber &+= 1
             }
         } catch {
             DispatchQueue.main.async {
@@ -287,6 +324,45 @@ final class HandCameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutpu
             framesInWindow = 0
             frameWindowStart = now
             DispatchQueue.main.async { self.framesPerSecond = measuredFPS }
+        }
+    }
+
+    private func makeCursorLandmarks(
+        _ observation: VNHumanHandPoseObservation
+    ) -> [HandLandmark] {
+        let joints: [(VNHumanHandPoseObservation.JointName, String)] = [
+            (.wrist, "wrist"),
+            (.thumbCMC, "thumbCMC"),
+            (.thumbMP, "thumbMP"),
+            (.thumbIP, "thumbIP"),
+            (.thumbTip, "thumbTip"),
+            (.indexMCP, "indexMCP"),
+            (.indexPIP, "indexPIP"),
+            (.indexDIP, "indexDIP"),
+            (.indexTip, "indexTip"),
+            (.middleMCP, "middleMCP"),
+            (.middlePIP, "middlePIP"),
+            (.middleDIP, "middleDIP"),
+            (.middleTip, "middleTip"),
+            (.ringMCP, "ringMCP"),
+            (.ringPIP, "ringPIP"),
+            (.ringDIP, "ringDIP"),
+            (.ringTip, "ringTip"),
+            (.littleMCP, "littleMCP"),
+            (.littlePIP, "littlePIP"),
+            (.littleDIP, "littleDIP"),
+            (.littleTip, "littleTip")
+        ]
+
+        return joints.compactMap { joint, name in
+            guard let point = try? observation.recognizedPoint(joint),
+                  point.confidence >= 0.10 else { return nil }
+            return HandLandmark(
+                id: name,
+                x: point.location.x,
+                y: point.location.y,
+                confidence: point.confidence
+            )
         }
     }
 
