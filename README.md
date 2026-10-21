@@ -5,8 +5,6 @@ Your hands. Your commands. Your computer.
 
 MIRA is a native macOS application that turns hand gestures into computer controls using a camera. It combines hand tracking, geometric gesture classification, personal calibration, and configurable shortcuts with a dedicated mode for moving, clicking, and scrolling.
 
-Built for Next Byte Hacks V5.
-
 ---
 
 ## Why MIRA?
