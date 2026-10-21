@@ -60,19 +60,19 @@ Assignments are configurable in Personalization. This table describes the recogn
 
 | Gesture | How to form it |
 | --- | --- |
-| Fist | Curl all four fingers into a comfortable closed hand. |
-| Open Palm | Extend all four fingers with the hand clearly visible. |
-| Thumbs Up | Extend Thumb upward; curl the other fingers. |
-| Thumbs Down | Extend Thumb downward; curl the other fingers. |
-| Peace | Extend Index and Middle; curl Ring and Little. |
-| Three Fingers | Extend Index, Middle, and Ring; curl Little. |
-| Point Up | Extend only Index and point upward. |
-| Point Down | Extend only Index and point downward. |
-| Point Left | Extend only Index and point left in the tracking view. |
-| Point Right | Extend only Index and point right in the tracking view. |
-| OK | Bring Thumb and Index fingertips together; extend Middle, Ring, and Little. |
-| Rock | Extend Index and Little; curl Middle and Ring. |
-| Shaka | Extend Thumb and Little; curl Index, Middle, and Ring. |
+| ✊ Fist | Curl all four fingers into a comfortable closed hand. |
+| ✋ Open Palm | Extend all four fingers with the hand clearly visible. |
+| 👍 Thumbs Up | Extend Thumb upward; curl the other fingers. |
+| 👎 Thumbs Down | Extend Thumb downward; curl the other fingers. |
+| ✌️ Peace | Extend Index and Middle; curl Ring and Little. |
+| 🖖 Three Fingers | Extend Index, Middle, and Ring; curl Little. |
+| ☝️ Point Up | Extend only Index and point upward. |
+| 👇 Point Down | Extend only Index and point downward. |
+| 👈 Point Left | Extend only Index and point left in the tracking view. |
+| 👉 Point Right | Extend only Index and point right in the tracking view. |
+| 👌 OK | Bring Thumb and Index fingertips together; extend Middle, Ring, and Little. |
+| 🤘 Rock | Extend Index and Little; curl Middle and Ring. |
+| 🤙 Shaka | Extend Thumb and Little; curl Index, Middle, and Ring. |
 
 Keep the hand inside the camera view with the relevant fingers visible. Tracking depends on lighting, camera placement, distance, and pose clarity.
 
