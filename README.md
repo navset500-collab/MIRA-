@@ -391,9 +391,3 @@ MIRA is a macOS hackathon prototype.
 - Gestures are an alternative input method, not a universal accessibility solution.
 
 A screen-aware local AI assistant is a future direction, not an implemented feature of this release. Current gesture controls do not require an AI-provider API key.
-
-## Project
-
-Created by Navraj for Next Byte Hacks V5.
-
-MIRA explores a simple idea: familiar hand movements can offer another way to reach the controls already on a computer.
