@@ -1,284 +1,401 @@
-<div align="center">
-
 # MIRA
+### Motion Interface for Real-Time Access
 
-### Your hands. Another way to control your Mac.
+Your hands. Your commands. Your computer.
 
-A camera-based gesture-control prototype for shortcuts, cursor movement,
-clicking, and scrolling—without reaching for the trackpad.
+MIRA is a native macOS application that turns hand gestures into computer controls using a camera. It combines hand tracking, geometric gesture classification, personal calibration, and configurable shortcuts with a dedicated mode for moving, clicking, and scrolling.
 
 Built for Next Byte Hacks V5.
-
-[Get started](#get-started) · [Using MIRA](#using-mira) ·
-[Troubleshooting](#troubleshooting) · [Project status](#project-status)
-
-</div>
 
 ---
 
 ## Why MIRA?
 
-Sometimes the keyboard and trackpad are the interruption.
+A small interaction can interrupt an entire task.
 
-You might be following a recipe with messy hands, eating beside your laptop,
-or stepping away during a presentation. You know what you want the computer
-to do; touching it just is not convenient.
+Following a recipe with messy hands. Eating beside a laptop without wanting to touch the trackpad. Stepping away during a presentation and needing to adjust something on screen.
 
-MIRA explores another option: use a visible hand gesture to request an action.
+In each case, the intention is simple. Reaching for the computer is the inconvenient part.
 
-It is not a replacement for every keyboard or mouse interaction. It is a
-prototype for the moments when another input method helps.
+MIRA explores another way to interact: show a familiar hand gesture and use it to request a command.
 
-## What it does
+The goal is not to replace every keyboard or mouse interaction. It is to make common controls available when touching the computer gets in the way.
 
-- Recognizes hand gestures from a camera feed.
-- Provides a calibration flow for capturing personal gesture examples.
-- Lets you assign shortcuts to gestures.
-- Offers a separate Cursor Control mode for movement, clicking, and scrolling.
-- Displays brief feedback describing the gesture and the action result.
+## At a glance
 
-### Actions and shortcuts
+- 13 recognized hand gestures.
+- 17 assignable actions, plus a Disabled option.
+- Guided calibration for personal hand measurements.
+- Separate Actions and Cursor Control modes.
+- Pointer movement, single-clicking, and vertical scrolling.
+- Brief feedback identifying the gesture and action result.
+- Camera-based interaction without a wearable controller.
+- Native macOS integration for application, window, browser, and audio controls.
 
-The action menu includes:
+## How it works
 
-| Category | Controls |
+### Hand tracking and geometry
+
+The camera provides hand-tracking input. Landmarks describe finger joints and fingertips.
+
+MIRA derives features such as finger extension, joint geometry, fingertip contact, and direction. These features distinguish poses such as a fist, an open palm, two extended fingers, and directional pointing.
+
+### Personal calibration
+
+The welcome flow guides users through capturing the supported poses. These measurements form a personal hand profile. Personal templates contribute to the classifier's confidence calculation.
+
+### Stable activation
+
+Recognizing a pose does not immediately execute a shortcut.
+
+A temporal stabilizer checks that the gesture remains consistent before activation. After an action triggers, the pose must be released before it can trigger again.
+
+### Execution and feedback
+
+MIRA routes the gesture to its configured action or reserved cursor behavior.
+
+Floating notices identify the initiating gesture and describe the result reported by the executor. Where an operation is only requested, the notice should describe the request rather than imply another application completed it.
+
+## The 13 gestures
+
+Assignments are configurable in Personalization. This table describes the recognized shapes, not a universal shortcut layout.
+
+| Gesture | How to form it |
 | --- | --- |
-| Modes | Cursor Control On/Off; Actions On/Off |
-| Windows | Minimize; Maximize / Restore |
-| Capture | Take Screenshot |
-| Audio | Volume Up; Volume Down |
-| Spotify | Open/Close Spotify; Play/Pause Spotify |
-| Chrome | Open/Close Chrome Tab; Stock Market; Gmail; YouTube; ChatGPT; Instagram |
-| Applications | Open/Close Notes; Open/Close Calendar |
+| Fist | Curl all four fingers into a comfortable closed hand. |
+| Open Palm | Extend all four fingers with the hand clearly visible. |
+| Thumbs Up | Extend Thumb upward; curl the other fingers. |
+| Thumbs Down | Extend Thumb downward; curl the other fingers. |
+| Peace | Extend Index and Middle; curl Ring and Little. |
+| Three Fingers | Extend Index, Middle, and Ring; curl Little. |
+| Point Up | Extend only Index and point upward. |
+| Point Down | Extend only Index and point downward. |
+| Point Left | Extend only Index and point left in the tracking view. |
+| Point Right | Extend only Index and point right in the tracking view. |
+| OK | Bring Thumb and Index fingertips together; extend Middle, Ring, and Little. |
+| Rock | Extend Index and Little; curl Middle and Ring. |
+| Shaka | Extend Thumb and Little; curl Index, Middle, and Ring. |
 
-There are 17 selectable actions plus a Disabled option.
+Keep the hand inside the camera view with the relevant fingers visible. Tracking depends on lighting, camera placement, distance, and pose clarity.
 
-Chrome controls require Google Chrome. Spotify controls require the Spotify
-desktop app. Browser actions manage their own tracked tabs; they are not
-intended to close arbitrary tabs you opened yourself.
+## The 17 actions
 
-## Get started
+Gestures are inputs. Actions are the commands assigned to them.
+
+The selection displayed beside each gesture in Personalization determines its shortcut in Actions mode.
+
+### Modes
+
+| # | Action | Behavior |
+| --- | --- | --- |
+| 1 | Cursor Control On/Off | Enables or disables pointer-control mode. Assign this toggle to a gesture other than Open Palm, Fist, or Peace, which have reserved cursor-mode roles. |
+| 2 | Actions On/Off | Enables or pauses gesture shortcuts without requiring the camera to stop. |
+
+### Windows and capture
+
+| # | Action | Behavior |
+| --- | --- | --- |
+| 3 | Minimize Window | Requests minimization of the target application's window. Requires Accessibility permission. |
+| 4 | Maximize / Restore Window | Resizes a supported target window to its display's usable area. A subsequent activation restores remembered bounds. This is distinct from macOS full-screen mode. |
+| 5 | Take Screenshot | Captures the primary display and saves a PNG to the Desktop. Requires Screen Recording permission and permission to save the file. |
+
+### Audio and Spotify
+
+| # | Action | Behavior |
+| --- | --- | --- |
+| 6 | Volume Up | Requests a 10-point increase in system output volume, capped at 100. |
+| 7 | Volume Down | Requests a 10-point decrease in system output volume, bounded at 0. |
+| 8 | Open/Close Spotify | Opens Spotify, or requests that the running application quit. |
+| 9 | Play/Pause Spotify | Sends Spotify its play/pause command. Requires Spotify desktop and Automation permission. |
+
+Playback controls target Spotify, not Apple Music. System volume controls are independent of Spotify playback.
+
+### Chrome
+
+| # | Action | Behavior |
+| --- | --- | --- |
+| 10 | Open/Close Chrome Tab | Opens a tab managed by MIRA. Repeating the action is intended to close that tracked tab rather than an unrelated tab. |
+| 11 | Open/Close Stock Market in Chrome | Opens Google Finance in a managed Chrome tab and uses the browser controller's open/close behavior. |
+| 12 | Open/Close Gmail | Opens Gmail in a managed Chrome tab and uses the browser controller's open/close behavior. |
+| 13 | Open/Close YouTube | Opens YouTube in a managed Chrome tab and uses the browser controller's open/close behavior. |
+| 14 | Open/Close ChatGPT | Opens the ChatGPT website in a managed Chrome tab. This is a website shortcut, not an AI integration inside MIRA. |
+| 15 | Open/Close Instagram | Opens Instagram in a managed Chrome tab and uses the browser controller's open/close behavior. |
+
+Browser controls require Google Chrome and Automation permission. Website shortcuts do not sign users in or bypass authentication.
+
+Browser open/close behavior remains under active on-device validation.
+
+### Applications
+
+| # | Action | Behavior |
+| --- | --- | --- |
+| 16 | Open/Close Notes | Opens Apple Notes, or requests that the running application quit. |
+| 17 | Open/Close Calendar | Opens Apple Calendar, or requests that the running application quit. |
+
+Application open/close controls request application launch or termination. They are not equivalent to closing a single document window. The target application may present its own confirmation.
+
+### Disabled
+
+Disabled is an additional dropdown option, not an eighteenth action. It removes the shortcut assignment for a gesture.
+
+There are more actions than gesture categories, so not every action needs to be assigned at once.
+
+## Using Actions mode
+
+1. Open Personalization.
+2. Find the desired gesture.
+3. Select its action.
+4. Return to the camera workspace.
+5. Enable Actions.
+6. Hold the gesture steadily until activation.
+7. Release the pose before repeating it.
+
+The interface rejects assigning the same non-disabled action to multiple gestures.
+
+Assign Volume Up and Volume Down separately. Their direction is determined by the selected action, not by the gesture used.
+
+## Using Cursor Control
+
+Cursor Control reserves specific gestures for direct pointer interaction.
+
+| Gesture | Cursor behavior |
+| --- | --- |
+| Open Palm | Move the pointer. |
+| Hold Fist | Click once after first showing Open Palm. |
+| Peace: Index and Middle extended, Ring and Little curled | Enter scrolling; move the hand vertically while maintaining the pose. |
+
+### Moving
+
+Show Open Palm and move the hand while keeping it visible.
+
+### Clicking
+
+Show Open Palm first, then hold Fist. Clicking is rearmed by showing Open Palm before the next Fist click.
+
+### Scrolling
+
+Place the pointer over scrollable content. Show the two-finger pose, hold briefly, then move the hand vertically.
+
+Returning the hand to its scrolling origin stops scroll input. Showing Open Palm returns to pointer movement.
+
+### Switching modes
+
+Ordinary shortcuts are paused while Cursor Control is active. A separately assigned Cursor Control toggle can exit the mode. Shaka is one possible assignment.
+
+Do not assign that toggle to Open Palm, Fist, or Peace: those gestures have reserved roles inside cursor mode.
+
+This separation prevents scrolling from also opening a tab or clicking from also requesting a screenshot.
+
+## Hover feedback
+
+Brief notices connect an interaction with its result.
+
+For example, feedback can identify the gesture that enabled Cursor Control, report a volume adjustment request, or explain a permission failure.
+
+| Actions | Cursor Control | Feedback |
+| --- | --- | --- |
+| Off | Off | Hidden |
+| On | Off | Enabled |
+| Off | On | Enabled |
+
+Individual notices use a three-second dismissal timer. New feedback may replace a notice already visible.
+
+Notices are suppressed when both modes are off, including a notice that would otherwise appear after disabling the final active mode.
+
+## Installation
+
+MIRA is currently distributed as source code for a local macOS build.
 
 ### Requirements
 
-- A Mac running macOS 14 or later.
+- macOS 14 or later.
 - A working camera.
-- Xcode with its command-line tools configured for Swift development.
-- Google Chrome and Spotify only if you want their associated actions.
+- Xcode with a Swift toolchain supporting Swift 6 package manifests.
+- Google Chrome for browser actions.
+- Spotify desktop for Spotify actions.
 
-This repository is currently a source-build prototype, not a one-click
-installer. Review `build.sh` for the build and packaging steps used by this
-version.
+Chrome and Spotify are required only for their associated controls.
 
-### 1. Download the project
+### 1. Download
 
-On this repository's GitHub page:
+```bash
+git clone [https://github.com/navset500-collab/MIRA-.git](https://github.com/navset500-collab/MIRA-.git)
+cd MIRA-
+```
 
-1. Select **Code**.
-2. Select **Download ZIP**.
-3. Extract the ZIP.
-4. Open Terminal and type `cd `, including the space.
-5. Drag the extracted project folder into Terminal and press Return.
+Alternatively, select Code → Download ZIP on GitHub, extract the archive, and open Terminal in the extracted project directory.
 
-Alternatively, clone this repository and enter its project directory.
+### 2. Build
 
-### 2. Run the tests
+```bash
+MIRA_SIGN_IDENTITY=- zsh build.sh
+```
 
-With Xcode installed at its usual location:
+The build produces:
+
+```text
+build/MIRA.app
+```
+
+This requests local ad-hoc signing without an Apple Developer signing certificate. It is a development build, not a notarized public installer.
+
+### 3. Launch
+
+```bash
+open build/MIRA.app
+```
+
+Quit an already-running copy before opening a newly rebuilt version.
+
+### 4. Grant permissions
+
+Enable the permissions requested by the features being used in System Settings → Privacy & Security.
+
+| Permission | Purpose |
+| --- | --- |
+| Camera | Hand tracking |
+| Accessibility | Pointer and window control |
+| Automation → Google Chrome | Browser actions |
+| Automation → Spotify | Spotify playback |
+| Screen Recording | Screenshot capture |
+
+Saving screenshots may also require Desktop-folder access.
+
+Locally signed rebuilds can require renewed permission approval. Quit and reopen MIRA after changing permissions if a feature remains unavailable.
+
+### 5. Set up the hand profile
+
+1. Select Set up my hand on the welcome screen.
+2. Keep the hand visible and follow the pose prompts.
+3. Capture the requested gestures.
+4. Select Open MIRA when the profile is complete.
+5. Start the camera if it is not running.
+6. Choose assignments in Personalization.
+7. Enable Actions or Cursor Control.
+
+## Screenshot output
+
+The screenshot action uses ScreenCaptureKit to capture the primary display.
+
+Successful captures are saved locally to the Desktop with names beginning with `MIRA-` and ending in `.png`.
+
+The screenshot action does not upload the image.
+
+## Development
+
+### Build the application target
+
+```bash
+swift build --product MIRA
+```
+
+### Run the tests
+
+With Xcode installed at its standard location:
 
 ```bash
 DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" \
   /usr/bin/xcrun swift test
 ```
 
-These tests cover core recognition, timing behavior, and action-menu structure.
-They do not replace live testing of the camera, Chrome automation, screenshots,
-or window management.
+The core test suite covers:
 
-### 3. Build MIRA
+- Supported gesture classification.
+- Personal-template recognition.
+- Low-confidence and ambiguous-input rejection.
+- Explicit thumb direction.
+- Three-finger recognition.
+- Hold-duration boundaries.
+- Release and retrigger behavior.
+- Action-menu structure.
 
-From the project directory:
+Core tests do not replace on-device testing of camera tracking, permissions, browser automation, screenshots, or window management.
 
-```bash
-MIRA_SIGN_IDENTITY=- zsh build.sh
-```
-
-This requests a local ad-hoc build without an Apple Developer signing
-certificate. It is not a notarized distribution build.
-
-### 4. Open the app
-
-```bash
-open build/MIRA.app
-```
-
-If MIRA was already running during the build, quit it completely before
-opening the rebuilt app.
-
-### 5. Allow the required permissions
-
-In **System Settings → Privacy & Security**, enable the permissions requested
-by the features you use:
-
-| Permission | Purpose |
-| --- | --- |
-| Camera | Hand tracking |
-| Accessibility | Cursor and window control |
-| Automation → Google Chrome | Browser tab actions |
-| Automation → Spotify | Spotify playback |
-| Screen Recording | Screenshots |
-
-Screenshot saving may also require Desktop-folder access.
-
-macOS can require permission approval again after a locally signed rebuild.
-If permission changes do not take effect, quit and reopen MIRA.
-
-### 6. Calibrate and start
-
-1. Follow the welcome screen into calibration.
-2. Keep your hand visible and follow the requested poses.
-3. Start the camera if it is not already running.
-4. Open Personalization to choose gesture assignments.
-5. Enable either Actions or Cursor Control.
-
-## Using MIRA
-
-### Actions mode
-
-Assign an action to a gesture, then hold the pose steadily.
-
-After an action triggers, release the pose before repeating it. Holding a pose
-continuously is not intended to repeatedly execute the same shortcut.
-
-Assign Volume Up and Volume Down separately.
-
-### Cursor Control mode
-
-| Gesture | Behavior |
-| --- | --- |
-| Open Palm | Move the pointer |
-| Hold Fist | Click once after first showing Open Palm |
-| Index + Middle extended; Ring + Little curled | Enter scrolling; move the hand vertically to scroll |
-
-Show Open Palm again to return to pointer movement and rearm clicking.
-
-Choose a separate gesture, such as Shaka, for the Cursor Control toggle.
-Do not assign the toggle to Open Palm, Fist, or the two-finger scrolling pose.
-
-Ordinary shortcut actions are paused while Cursor Control is active.
-
-### Hover feedback
-
-Feedback names the initiating gesture and describes the action result.
-
-Notices are enabled when Actions or Cursor Control is on. They are hidden
-when both modes are off, and individual notices use a three-second timer.
-
-A result such as “request sent” is not the same as confirming that another
-application completed the requested operation.
-
-## How it works
-
-MIRA's gesture classifier uses hand features such as finger extension,
-joint geometry, and direction.
-
-A temporal stabilizer checks that a pose is held consistently before it can
-trigger an action. Release-and-rearm behavior helps prevent a held pose from
-executing the same action continuously.
-
-The project separates shared recognition logic from macOS application code:
+### Repository structure
 
 ```text
 Sources/
-├── MIRACore/   Gesture features, classification, stabilization, action definitions
-└── MIRA/       Camera interface, application UI, cursor control, action execution
+├── MIRACore/       Gesture features, classification, stabilization, and actions
+└── MIRA/           Application UI, camera integration, and action execution
 
 Tests/
-└── MIRACoreTests/   Core recognition and action-menu tests
+└── MIRACoreTests/  Core automated tests
+
+Support/           Application configuration
+Helpers/           Tracking helper source
+Scripts/           Development utilities
+build.sh           Local application packaging
 ```
 
 ## Troubleshooting
 
-### The camera recognizes my gesture, but nothing happens
+### A gesture is recognized but no shortcut runs
 
-Check that Actions is enabled. In Cursor Control mode, ordinary shortcut
-actions are intentionally paused.
+Check that Actions is enabled and the gesture has an assignment.
 
-Hold the gesture steadily, release it, then try again.
+Ordinary shortcuts are paused during Cursor Control. Hold the pose steadily, release it, and try again.
 
-### Cursor control does not move or click
+### The pointer does not move or click
 
-Check Accessibility permission for the current MIRA build.
+Check Accessibility permission for the current build.
 
-For clicking, first show Open Palm, then hold Fist. Another Open Palm is
-required before the next click.
+Show Open Palm before holding Fist. Another Open Palm is required before the next click.
 
 ### Scrolling does not start
 
-Extend index and middle, curl ring and little, and hold briefly. Then move
-your hand vertically while keeping the pose.
-
-Place the pointer over a scrollable area first.
+Place the pointer over scrollable content. Extend Index and Middle, curl Ring and Little, hold briefly, then move the hand vertically.
 
 ### Chrome opens a tab but does not close it
 
 Check Automation permission and confirm the latest rebuilt MIRA is running.
 
-The tab toggle must be tested in the installed build. A passing core test suite
-does not verify Chrome's AppleScript behavior.
+Browser tab management remains under active validation. Passing core tests does not verify Chrome automation.
 
-### Screenshots do not save
+### Spotify playback does not work
 
-Enable Screen Recording permission, quit MIRA, and reopen it.
+Confirm that Spotify desktop is installed and Automation permission is enabled.
 
-Check the action result and Desktop-folder access. A successful capture saves
-a PNG named `MIRA-…png` to the Desktop.
+Open/Close Spotify and Play/Pause Spotify are separate controls.
 
-### Tests cannot find XCTest
+### A window does not maximize
 
-Use the full Xcode toolchain shown in the test command above. A standalone
-command-line-tools configuration may not provide the required test framework.
+Check Accessibility permission. Some applications and window types restrict external resizing.
 
-## Project status
+Exit macOS full-screen mode before using Maximize / Restore.
+
+### A screenshot is not saved
+
+Check Screen Recording permission and Desktop-folder access, then quit and reopen MIRA.
+
+Review the action result for the reported capture or saving error.
+
+### Tests cannot import XCTest
+
+Use the full Xcode toolchain with the test command above.
+
+### Hover notices do not appear
+
+Feedback is hidden when both modes are off.
+
+Enable Actions or Cursor Control and execute a supported interaction. Notices follow action results and relevant state changes rather than every camera frame.
+
+## Current scope and limitations
 
 MIRA is a macOS hackathon prototype.
 
-Core automated tests have passed during development. Live camera behavior,
-permissions, application automation, and window compatibility require
-on-device verification.
-
-Known limitations:
-
-- macOS only; Windows and Linux support are not implemented.
-- Hand visibility, lighting, and camera placement affect tracking.
-- Some windows do not support external resizing.
-- Maximize/restore history is held in memory.
-- Locally signed builds may require renewed permissions.
+- Tracking depends on visibility, lighting, camera placement, and pose clarity.
+- Windows and Linux support are not implemented.
+- Some applications restrict external window control.
+- Maximize/restore history resets when MIRA quits.
 - Browser open/close behavior remains under active validation.
-- A local screen-aware AI assistant is planned, not implemented.
+- Browser actions and screenshots require on-device permission and behavior checks.
+- Local development builds may require renewed permissions after rebuilding.
+- Gestures are an alternative input method, not a universal accessibility solution.
 
-MIRA does not require an AI-provider API key for its current gesture controls.
+A screen-aware local AI assistant is a future direction, not an implemented feature of this release. Current gesture controls do not require an AI-provider API key.
 
-## Development
+## Project
 
-```bash
-swift build --product MIRA
-```
+Created by Navraj for Next Byte Hacks V5.
 
-Run the core tests before proposing changes. For changes to cursor control,
-browser actions, screenshots, or permissions, also include a manual test
-description.
-
-## Before a demo
-
-- Test the exact app build you will present.
-- Confirm permissions before recording.
-- Prepare a scrollable page and safe click target.
-- Check both volume directions.
-- Verify browser and screenshot actions before including them in the demo.
-- Close duplicate test tabs.
-- Describe only features that work in the demonstrated build.
-
----
-
-Built by Navraj for Next Byte Hacks V5.
+MIRA explores a simple idea: familiar hand movements can offer another way to reach the controls already on a computer.
